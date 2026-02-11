@@ -104,6 +104,26 @@ def asignar(message):
     except:
         bot.reply_to(message, "Uso correcto:\n/asignar correo ID")
 
+# ================== AUTORIZAR USUARIOS (ADMIN) ==================
+
+@bot.message_handler(commands=['autorizar'])
+def autorizar(message):
+    if message.chat.id != ADMIN_ID:
+        bot.reply_to(message, "No tienes permiso.")
+        return
+
+    try:
+        user_id = int(message.text.split()[1])
+
+        cursor.execute("UPDATE usuarios SET autorizado=1 WHERE chat_id=?", (user_id,))
+        conn.commit()
+
+        bot.send_message(user_id, "🎉 Has sido autorizado. Ya puedes usar /code")
+        bot.reply_to(message, f"Usuario {user_id} autorizado correctamente.")
+
+    except:
+        bot.reply_to(message, "Uso correcto:\n/autorizar ID")
+
 # ================== PEDIR CODIGO ==================
 
 def extraer_codigo_de_email(destinatario_buscado):
