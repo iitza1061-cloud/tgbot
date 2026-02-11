@@ -104,6 +104,91 @@ def asignar(message):
     except:
         bot.reply_to(message, "Uso correcto:\n/asignar correo ID")
 
+# ================== PEDIR CODIGO ==================
+
+def extraer_codigo_de_email(destinatario_buscado):
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(GMAIL_USER, GMAIL_PASS)
+        mail.select("inbox")
+
+        result, data = mail.search(None, "ALL")
+        ids = data[0].split()
+
+        ultimos = ids[-15:]
+
+        for num in reversed(ultimos):
+            result, msg_data = mail.fetch(num, "(RFC822)")
+            raw_email = msg_data[0][1]
+            msg = email.message_from_bytes(raw_email)
+
+            recibido = msg.get("Delivered-To")
+            if not recibido:
+                continue
+
+            if destinatario_buscado.lower() not in recibido.lower():
+                continue
+
+            cuerpo = ""
+
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        cuerpo = part.get_payload(decode=True).decode(errors="ignore")
+            else:
+                cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
+
+            codigo = re.findall(r"\b\d{4,8}\b", cuerpo)
+
+            if codigo:
+                mail.logout()
+                return codigo[0]
+
+        mail.logout()
+        return None
+
+    except Exception as e:
+        print("Error:", e)
+        return None
+
+
+@bot.message_handler(commands=['code'])
+def pedir_codigo(message):
+    chat_id = message.chat.id
+
+    partes = message.text.split()
+
+    if len(partes) < 2:
+        bot.reply_to(message, "Uso:\n/code correo@dominio.com")
+        return
+
+    correo = partes[1].lower()
+
+    # verificar usuario autorizado
+    cursor.execute("SELECT autorizado FROM usuarios WHERE chat_id=?", (chat_id,))
+    user = cursor.fetchone()
+
+    if not user or user[0] == 0:
+        bot.reply_to(message, "No estás autorizado.")
+        return
+
+    # verificar que el correo sea suyo
+    cursor.execute("SELECT chat_id FROM correos WHERE correo=?", (correo,))
+    dueño = cursor.fetchone()
+
+    if not dueño or dueño[0] != chat_id:
+        bot.reply_to(message, "Ese correo no te pertenece.")
+        return
+
+    bot.reply_to(message, "⏳ Buscando código...")
+
+    codigo = extraer_codigo_de_email(correo)
+
+    if codigo:
+        bot.send_message(chat_id, f"🔑 Tu código es:\n{codigo}")
+    else:
+        bot.send_message(chat_id, "No encontré ningún código reciente.")
+
 print("Bot iniciado correctamente...")
 bot.infinity_polling()
 
