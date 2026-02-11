@@ -16,32 +16,36 @@ def buscar_codigo():
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_PASS)
-        mail.select("inbox")
 
-        result, data = mail.search(None, "UNSEEN")
+        carpetas = ["inbox", '"[Gmail]/Spam"']
 
-        for num in data[0].split():
-            result, msg_data = mail.fetch(num, "(RFC822)")
-            raw_email = msg_data[0][1]
-            msg = email.message_from_bytes(raw_email)
+        for carpeta in carpetas:
+            mail.select(carpeta)
+            result, data = mail.search(None, "UNSEEN")
 
-            cuerpo = ""
+            for num in data[0].split():
+                result, msg_data = mail.fetch(num, "(RFC822)")
+                raw_email = msg_data[0][1]
+                msg = email.message_from_bytes(raw_email)
 
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        cuerpo = part.get_payload(decode=True).decode(errors="ignore")
-            else:
-                cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
+                cuerpo = ""
 
-            codigo = re.findall(r"\b\d{4,6}\b", cuerpo)
+                if msg.is_multipart():
+                    for part in msg.walk():
+                        if part.get_content_type() == "text/plain":
+                            cuerpo = part.get_payload(decode=True).decode(errors="ignore")
+                else:
+                    cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
 
-            if codigo:
-                return codigo[0]
+                codigo = re.findall(r"\b\d{4,6}\b", cuerpo)
+
+                if codigo:
+                    return codigo[0]
 
         return None
     except:
         return None
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
