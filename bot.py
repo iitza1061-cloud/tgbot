@@ -175,7 +175,6 @@ def extraer_codigo_de_email(destinatario_buscado):
 @bot.message_handler(commands=['code'])
 def pedir_codigo(message):
     chat_id = message.chat.id
-
     partes = message.text.split()
 
     if len(partes) < 2:
@@ -202,12 +201,13 @@ def pedir_codigo(message):
 
     bot.reply_to(message, "⏳ Buscando código...")
 
-codigo = obtener_codigo_por_correo(correo)
+    codigo = obtener_codigo_por_correo(correo)
 
     if codigo:
         bot.send_message(chat_id, f"🔑 Tu código es:\n{codigo}")
     else:
         bot.send_message(chat_id, "No encontré ningún código reciente.")
+
 # ================== BUSCAR CODIGO EN GMAIL ==================
 
 def obtener_codigo_por_correo(correo_buscado):
