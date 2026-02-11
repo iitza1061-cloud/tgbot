@@ -3,6 +3,7 @@ import sqlite3
 import imaplib
 import email
 import re
+from email.header import decode_header
 import time
 import threading
 
@@ -209,7 +210,6 @@ def pedir_codigo(message):
         bot.send_message(chat_id, "No encontré ningún código reciente.")
 
 # ================== BUSCAR CODIGO EN GMAIL ==================
-
 def obtener_codigo_por_correo(correo_buscado):
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
@@ -219,21 +219,33 @@ def obtener_codigo_por_correo(correo_buscado):
         result, data = mail.search(None, "ALL")
         ids = data[0].split()
 
-        # revisamos los últimos 20 correos
-        ultimos = ids[-20:]
+        # Revisar últimos correos
+        ultimos = ids[-30:]
 
         for num in reversed(ultimos):
             result, msg_data = mail.fetch(num, "(RFC822)")
             raw_email = msg_data[0][1]
             msg = email.message_from_bytes(raw_email)
 
-            delivered = msg.get("Delivered-To")
-            if not delivered:
+            # ===== DESTINATARIO =====
+            to_header = msg.get("To")
+
+            if not to_header:
                 continue
 
-            if correo_buscado.lower() not in delivered.lower():
+            decoded_to = ""
+            headers = decode_header(to_header)
+
+            for part, encoding in headers:
+                if isinstance(part, bytes):
+                    decoded_to += part.decode(encoding or "utf-8", errors="ignore")
+                else:
+                    decoded_to += part
+
+            if correo_buscado.lower() not in decoded_to.lower():
                 continue
 
+            # ===== CUERPO =====
             cuerpo = ""
 
             if msg.is_multipart():
@@ -243,6 +255,7 @@ def obtener_codigo_por_correo(correo_buscado):
             else:
                 cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
 
+            # ===== EXTRAER CODIGO =====
             codigo = re.findall(r"\b\d{4,8}\b", cuerpo)
 
             if codigo:
@@ -253,8 +266,10 @@ def obtener_codigo_por_correo(correo_buscado):
         return None
 
     except Exception as e:
-        print("Error Gmail:", e)
+        print("ERROR LEYENDO GMAIL:", e)
         return None
+
+
 
 print("Bot iniciado correctamente...")
 bot.infinity_polling()
