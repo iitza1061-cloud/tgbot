@@ -18,6 +18,7 @@ GMAIL_PASS = os.getenv("GMAIL_PASS")
 
 
 bot = telebot.TeleBot(TOKEN)
+ADMIN_ID = 7162087861
 
 # ================== BASE DE DATOS ==================
 
@@ -79,7 +80,33 @@ def info(message):
         f"🔐 Estado: {estado}")
     else:
         bot.send_message(chat_id, "No estás registrado. Usa /start")
+
+
+# ================== ASIGNAR CORREOS (ADMIN) ==================
+
+@bot.message_handler(commands=['asignar'])
+def asignar(message):
+    if message.chat.id != ADMIN_ID:
+        bot.reply_to(message, "No tienes permiso para usar este comando.")
+        return
+
+    try:
+        partes = message.text.split()
+        correo = partes[1].lower()
+        user_id = int(partes[2])
+
+        cursor.execute("INSERT OR REPLACE INTO correos (correo, chat_id) VALUES (?, ?)", (correo, user_id))
+        conn.commit()
+
+        bot.send_message(user_id, f"📩 Se te ha asignado el correo:\n{correo}\n\nRecibirás los códigos automáticamente.")
+        bot.reply_to(message, f"Correo {correo} asignado correctamente.")
+
+    except:
+        bot.reply_to(message, "Uso correcto:\n/asignar correo ID")
+
 print("Bot iniciado correctamente...")
 bot.infinity_polling()
+
+
 
 #
