@@ -1,9 +1,11 @@
 import telebot
+import sqlite3
 import imaplib
 import email
 import re
 import time
 import threading
+
 
 TOKEN = "8317770610:AAHDKymWIBHegGaOtANgZ5ixtDmlKYOYBEo"
 GMAIL_USER = "itzishpp@gmail.com"
@@ -12,55 +14,57 @@ CHAT_ID = 123456789
 
 bot = telebot.TeleBot(TOKEN)
 
-def buscar_codigo():
-    try:
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(GMAIL_USER, GMAIL_PASS)
+# ================== BASE DE DATOS ==================
 
-        carpetas = ["inbox", '"[Gmail]/Spam"']
+conn = sqlite3.connect("usuarios.db", check_same_thread=False)
+cursor = conn.cursor()
 
-        for carpeta in carpetas:
-            mail.select(carpeta)
-            result, data = mail.search(None, "UNSEEN")
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS usuarios (
+    chat_id INTEGER PRIMARY KEY,
+    autorizado INTEGER DEFAULT 0
+)
+""")
+conn.commit()
 
-            for num in data[0].split():
-                result, msg_data = mail.fetch(num, "(RFC822)")
-                raw_email = msg_data[0][1]
-                msg = email.message_from_bytes(raw_email)
-
-                cuerpo = ""
-
-                if msg.is_multipart():
-                    for part in msg.walk():
-                        if part.get_content_type() == "text/plain":
-                            cuerpo = part.get_payload(decode=True).decode(errors="ignore")
-                else:
-                    cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
-
-                codigo = re.findall(r"\b\d{4,6}\b", cuerpo)
-
-                if codigo:
-                    return codigo[0]
-
-        return None
-    except:
-        return None
-
+# ================== REGISTRO ==================
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "🤖 Sistema de códigos activo")
+    chat_id = message.chat.id
 
-def monitorear():
-    ultimo = None
-    while True:
-        codigo = buscar_codigo()
-        if codigo and codigo != ultimo:
-            bot.send_message(CHAT_ID, f"🔑 Código: {codigo}")
-            ultimo = codigo
-        time.sleep(10)
+    cursor.execute("SELECT * FROM usuarios WHERE chat_id=?", (chat_id,))
+    user = cursor.fetchone()
 
-threading.Thread(target=monitorear).start()
+    if not user:
+        cursor.execute("INSERT INTO usuarios (chat_id, autorizado) VALUES (?, 0)", (chat_id,))
+        conn.commit()
 
-print("Bot corriendo...")
-bot.infinity_polling()
+        bot.send_message(chat_id,
+        "✅ Registrado correctamente\n\n"
+        "Tu solicitud fue enviada.\n"
+        "Habla con tu distribuidor para ser autorizado.")
+
+    else:
+        bot.send_message(chat_id, "Ya estás registrado.")
+
+# ================== INFO CLIENTE ==================
+
+@bot.message_handler(commands=['info'])
+def info(message):
+    chat_id = message.chat.id
+
+    cursor.execute("SELECT autorizado FROM usuarios WHERE chat_id=?", (chat_id,))
+    user = cursor.fetchone()
+
+    if user:
+        estado = "Autorizado ✅" if user[0] == 1 else "No autorizado ❌"
+
+        bot.send_message(chat_id,
+        f"👤 Tu información\n\n"
+        f"🆔 ID: {chat_id}\n"
+        f"🔐 Estado: {estado}")
+    else:
+        bot.send_message(chat_id, "No estás registrado. Usa /start")
+
+#
