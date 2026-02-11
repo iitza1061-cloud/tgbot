@@ -7,10 +7,9 @@ import time
 import threading
 
 
-TOKEN = "8317770610:AAHDKymWIBHegGaOtANgZ5ixtDmlKYOYBEo"
+TOKEN = "8317770610:AAGrm8PG9x6yWVSa1qh4JMCMqEX1mLMpnVc"
 GMAIL_USER = "itzishpp@gmail.com"
 GMAIL_PASS = "oxarribadfeudelepdlp​​​"
-CHAT_ID = 123456789
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -66,5 +65,7 @@ def info(message):
         f"🔐 Estado: {estado}")
     else:
         bot.send_message(chat_id, "No estás registrado. Usa /start")
+print("Bot iniciado correctamente...")
+bot.infinity_polling()
 
 #
