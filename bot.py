@@ -7,9 +7,15 @@ import time
 import threading
 
 
-TOKEN = "8317770610:AAGrm8PG9x6yWVSa1qh4JMCMqEX1mLMpnVc"
-GMAIL_USER = "itzishpp@gmail.com"
-GMAIL_PASS = "oxarribadfeudelepdlp​​​"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+TOKEN = os.getenv("TOKEN")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_PASS = os.getenv("GMAIL_PASS")
+
 
 bot = telebot.TeleBot(TOKEN)
 
