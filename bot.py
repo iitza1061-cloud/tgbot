@@ -32,6 +32,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
 """)
 conn.commit()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS correos (
+    correo TEXT PRIMARY KEY,
+    chat_id INTEGER
+)
+""")
+conn.commit()
+
 # ================== REGISTRO ==================
 
 @bot.message_handler(commands=['start'])
