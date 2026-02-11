@@ -202,12 +202,59 @@ def pedir_codigo(message):
 
     bot.reply_to(message, "⏳ Buscando código...")
 
-    codigo = extraer_codigo_de_email(correo)
+codigo = obtener_codigo_por_correo(correo)
 
     if codigo:
         bot.send_message(chat_id, f"🔑 Tu código es:\n{codigo}")
     else:
         bot.send_message(chat_id, "No encontré ningún código reciente.")
+# ================== BUSCAR CODIGO EN GMAIL ==================
+
+def obtener_codigo_por_correo(correo_buscado):
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(GMAIL_USER, GMAIL_PASS)
+        mail.select("inbox")
+
+        result, data = mail.search(None, "ALL")
+        ids = data[0].split()
+
+        # revisamos los últimos 20 correos
+        ultimos = ids[-20:]
+
+        for num in reversed(ultimos):
+            result, msg_data = mail.fetch(num, "(RFC822)")
+            raw_email = msg_data[0][1]
+            msg = email.message_from_bytes(raw_email)
+
+            delivered = msg.get("Delivered-To")
+            if not delivered:
+                continue
+
+            if correo_buscado.lower() not in delivered.lower():
+                continue
+
+            cuerpo = ""
+
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        cuerpo = part.get_payload(decode=True).decode(errors="ignore")
+            else:
+                cuerpo = msg.get_payload(decode=True).decode(errors="ignore")
+
+            codigo = re.findall(r"\b\d{4,8}\b", cuerpo)
+
+            if codigo:
+                mail.logout()
+                return codigo[0]
+
+        mail.logout()
+        return None
+
+    except Exception as e:
+        print("Error Gmail:", e)
+        return None
 
 print("Bot iniciado correctamente...")
 bot.infinity_polling()
